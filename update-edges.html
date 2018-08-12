@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<!--
+Created by Hank Feild (hfeild@endicott.edu) on 29-May-2018.
+ 
+Load this page in any browser to see instructions for using it.
+
+
+MIT License
+
+Copyright (c) 2018 endicott-tech-fellows
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+-->
+<html>
+<head>
+<meta charset="UTF-8"> 
+<style>
+#input-area {
+    font-size: 20pt;
+}
+
+#input-area input, #input-area button {
+    font-size: 14pt;
+}
+</style>
+<script src="jszip.min.js"></script>
+<script src="FileSaver.js"></script>
+<script>
+var relationshipMap = {
+    '1':'Accuser',
+    '2':'Court Official',
+    '3':'Hearsay',
+    '4':'Witness For',
+    '5':'Witness Against',
+    '6':'Co-accused',
+    '99':'Unknown'
+};
+
+var directedRelationships = {
+    '1': 'directed',
+    '2': 'undirected',
+    '3': 'directed',
+    '4': 'directed',
+    '5': 'directed',
+    '6': 'undirected',
+    '99': 'undirected'
+};
+
+var colIndexes = {
+    'Source': 0, 
+    'Target': 1, 
+    'Type': 2, 
+    'Weight': 3, 
+    'Relationship': 4, 
+    'Label': 5
+};
+
+function process(){
+    // Read in csv file.
+    var file = document.getElementById('input-file').files[0];
+    var reader = new FileReader();
+    var zip = new JSZip();
+    var zipFolder = zip.folder('salem-edge-files');
+
+    reader.onload = function(e){
+        console.log(e);
+        var inputFileData = e.target.result.replace(/\r|\r\n/g, '\n').split('\n');
+        // console.log(inputFileData);
+        // return;
+        var outputDataMap = {}; // To keep data for each of the output files.
+        var allEdgesData = ['Source,Target,Type,Weight,Relationship,Label'];
+        var i, key;
+        for(key in relationshipMap){
+            outputDataMap[relationshipMap[key]] = 
+                ['Source,Target,Type,Weight,Relationship,Label'];
+        }
+        
+        // Process each line, adding in the new data and adding the updated
+        // entry to the corresponding output arrays.
+        for(i = 1; i < inputFileData.length; i++){
+            var cols = inputFileData[i].split(',').slice(0,5);
+            cols[colIndexes.Type] = directedRelationships[cols[colIndexes.Relationship]];
+            cols[colIndexes.Weight] = 1;
+            cols.push(relationshipMap[cols[colIndexes.Relationship]]);
+
+            var entry = cols.join(',');
+            // All edges are added to allEdgesData.
+            allEdgesData.push(entry);
+
+            // If this is one of the relationships we have an output file for,
+            // then we add it to that file, too.
+            if(outputDataMap[cols[colIndexes.Label]] !== undefined){
+                outputDataMap[cols[colIndexes.Label]].push(entry);
+            }
+        }
+
+        // Create CSV files in the zip file for each output array.
+        zipFolder.file('all-edges.csv', allEdgesData.join('\n'));
+        for(key in outputDataMap){
+            var filename = key.toLowerCase().replace(/\s/g, '-') +'-edges.csv';
+            zipFolder.file(filename, outputDataMap[key].join('\n'));
+        }
+
+        zip.generateAsync({type:"blob"})
+            .then(function(content) {
+                saveAs(content, "salem-edge-files.zip");
+            });
+    };
+    reader.readAsText(file);
+}
+
+
+</script>
+</head>
+<body>
+<h1>Transform Salem Witch Data</h1>
+<p>
+    Select the file you would like to transform and click "Transform".
+</p>
+
+<p id="input-area">
+<input type="file" id="input-file" name="input_file" multiple />
+<button id="process-btn" onclick="process();">Transform</button>
+</p>
+
+
+<h2>Input</h2> 
+<p>
+    The input file should be a comma separated values (CSV) file with at least five columns:
+</p>
+<ul>
+    <li>Source (a node id)</li>
+    <li>Target (a node id)</li>
+    <li>Type (directed, undirected, or blank)</li>
+    <li>Weight (a number, can be blank)</li>
+    <li>Relationship (a number where 1=Accuser, 2=Court Official, 3=Hearsay, 4=Witness for, 5=Witness against, 6=Co-accused, and 99=Unknown</li>
+</ul>
+
+<h2>Output</h2>
+<p>
+    The output of this process is a zip file containing the following files:
+</p>
+<ul>
+    <li>accuser-edges.csv</li>
+    <li>court-official-edges.csv</li>
+    <li>witness-for-edges.csv</li>
+    <li>co-accused-edges.csv</li>
+    <li>uknown-edges.csv</li>
+    <li>all-edges.csv</li>
+</ul>
+<p>
+Each of these have six columns:
+</p>
+<ul>
+    <li>Source (a node id)</li>
+    <li>Target (a node id)</li>
+    <li>Type (directed, undirected based on the relationship type)</li>
+    <li>Weight (a number&mdash;always 1)</li>
+    <li>Relationship (a number where 1=Accuser, 2=Court Official, 3=Hearsay, 4=Witness for, 5=Witness against, 6=Co-accused, and 99=Unknown</li>
+    <li>Label (the label that corresponds to the relationship value)</li>
+</ul>
+
+
+</body>
+</html>
