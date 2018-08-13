@@ -2,7 +2,7 @@
 This is a web app that transforms network data about the Salem witch trials from one format to another that is more useful with Gephi.
 
 ## To begin
-Open `update-edges.html` in any browser. Follow the instructions on the page.
+Open `index.html` in any browser. Follow the instructions on the page.
 
 ## Input
 The input file should be a comma separated values (CSV) file with at least five columns:
